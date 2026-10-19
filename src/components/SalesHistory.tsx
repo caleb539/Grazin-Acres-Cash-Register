@@ -6,6 +6,7 @@ import { Modal } from './Modal';
 interface Props {
   sales: LocalSale[];
   onVoid: (sale: LocalSale, reason: string) => Promise<string | null>;
+  onPrint: (sale: LocalSale) => void;
   onClose: () => void;
 }
 
@@ -21,7 +22,7 @@ function isToday(iso: string): boolean {
   return new Date(iso).toDateString() === new Date().toDateString();
 }
 
-export function SalesHistory({ sales, onVoid, onClose }: Props) {
+export function SalesHistory({ sales, onVoid, onPrint, onClose }: Props) {
   const today = useMemo(
     () => sales.filter((s) => isToday(s.sold_at)).sort((a, b) => b.sold_at.localeCompare(a.sold_at)),
     [sales],
@@ -79,10 +80,17 @@ export function SalesHistory({ sales, onVoid, onClose }: Props) {
                   </div>
                 )}
                 {s.upload_error && <div className="error small">Upload error: {s.upload_error}</div>}
-                {!s.voided && voiding !== s.id && (
-                  <button type="button" className="btn btn-danger-ghost" onClick={() => { setVoiding(s.id); setReason(''); setError(null); }}>
-                    Void sale
-                  </button>
+                {voiding !== s.id && (
+                  <div className="row gap">
+                    <button type="button" className="btn btn-ghost" onClick={() => onPrint(s)}>
+                      Print receipt
+                    </button>
+                    {!s.voided && (
+                      <button type="button" className="btn btn-danger-ghost" onClick={() => { setVoiding(s.id); setReason(''); setError(null); }}>
+                        Void sale
+                      </button>
+                    )}
+                  </div>
                 )}
                 {voiding === s.id && (
                   <div className="void-box">

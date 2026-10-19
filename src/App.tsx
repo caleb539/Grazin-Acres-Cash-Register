@@ -5,6 +5,7 @@ import { Login } from './components/Login';
 import { Modal } from './components/Modal';
 import { type Payment, PaymentModal } from './components/PaymentModal';
 import { ProductGrid } from './components/ProductGrid';
+import { Receipt } from './components/Receipt';
 import { SaleComplete } from './components/SaleComplete';
 import { SalesHistory } from './components/SalesHistory';
 import { WeightPad } from './components/WeightPad';
@@ -58,6 +59,12 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
   const [feeOn, setFeeOn] = useState(false);
   const [cashier, setCashierState] = useState(getCashier);
   const [overlay, setOverlay] = useState<Overlay>(() => (getCashier() ? null : { kind: 'cashier' }));
+  const [printSale, setPrintSale] = useState<LocalSale | null>(null);
+
+  const handlePrint = useCallback((sale: LocalSale) => {
+    setPrintSale(sale);
+    setTimeout(() => window.print(), 50);
+  }, []);
 
   const settings = catalog?.settings;
   const totals = useMemo(() => {
@@ -144,6 +151,7 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
     };
     data.addSale(sale);
     clearSale();
+    setPrintSale(sale);
     setOverlay({ kind: 'done', sale });
   };
 
@@ -163,6 +171,7 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
 
   return (
     <div className="app">
+      {printSale && <Receipt sale={printSale} settings={catalog.settings} />}
       <header className="topbar">
         <div className="brand">
           <img src="/icon.svg" alt="" width={32} height={32} />
@@ -224,9 +233,11 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
       {overlay?.kind === 'pay' && customer && (
         <PaymentModal totalCents={totals.total} customer={customer} onPay={completeSale} onCancel={() => setOverlay(null)} />
       )}
-      {overlay?.kind === 'done' && <SaleComplete sale={overlay.sale} onNext={() => setOverlay(null)} />}
+      {overlay?.kind === 'done' && (
+        <SaleComplete sale={overlay.sale} onPrint={() => handlePrint(overlay.sale)} onNext={() => setOverlay(null)} />
+      )}
       {overlay?.kind === 'history' && (
-        <SalesHistory sales={data.sales} onVoid={data.voidSale} onClose={() => setOverlay(null)} />
+        <SalesHistory sales={data.sales} onVoid={data.voidSale} onPrint={handlePrint} onClose={() => setOverlay(null)} />
       )}
       {overlay?.kind === 'cashier' && (
         <CashierPrompt

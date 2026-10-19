@@ -4,7 +4,7 @@ import { Modal } from './Modal';
 
 const TENDER_LABEL = { cash: 'Cash', check: 'Check', card_on_file: 'Card on file (Farmmatch)' } as const;
 
-export function SaleComplete({ sale, onNext }: { sale: LocalSale; onNext: () => void }) {
+export function SaleComplete({ sale, onPrint, onNext }: { sale: LocalSale; onPrint: () => void; onNext: () => void }) {
   return (
     <Modal title="Sale complete">
       <div className="complete">
@@ -33,7 +33,7 @@ export function SaleComplete({ sale, onNext }: { sale: LocalSale; onNext: () => 
         )}
         <div className="muted small pad-y">Receipt {sale.receipt_number}</div>
         <div className="row gap">
-          <button type="button" className="btn btn-lg btn-ghost grow" disabled title="Receipt printer setup comes next">
+          <button type="button" className="btn btn-lg btn-ghost grow" onClick={onPrint}>
             Print receipt
           </button>
           <button type="button" className="btn btn-lg btn-primary grow2" onClick={onNext} autoFocus>

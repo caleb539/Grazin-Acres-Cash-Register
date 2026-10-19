@@ -203,3 +203,38 @@ h1, h2 { margin: 0; }
 .muted { color: var(--muted); }
 .small { font-size: 13px; }
 .mono { font-variant-numeric: tabular-nums; }
+
+/* ---------- receipt print ---------- */
+.print-receipt { display: none; }
+
+@media print {
+  @page { margin: 4mm; }
+  html, body, #root { height: auto !important; background: #fff !important; color: #000 !important; }
+  .topbar, .main, .modal-backdrop { display: none !important; }
+  .app { height: auto !important; padding: 0 !important; display: block !important; }
+  .print-receipt {
+    display: block !important;
+    width: 100%;
+    max-width: 76mm;
+    margin: 0 auto;
+    color: #000;
+    font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+  }
+  .receipt-header { text-align: center; margin-bottom: 6px; }
+  .receipt-store { font-size: 16px; font-weight: 800; margin-bottom: 2px; }
+  .receipt-meta { font-size: 11px; }
+  .receipt-void { font-size: 14px; font-weight: 800; margin-top: 4px; }
+  .receipt-rule { border: 0; border-top: 1px dashed #000; margin: 6px 0; }
+  .receipt-lines, .receipt-totals, .receipt-tender { display: flex; flex-direction: column; gap: 3px; }
+  .receipt-item { display: flex; flex-direction: column; }
+  .receipt-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .receipt-item-name { font-weight: 600; }
+  .receipt-item-total { font-weight: 600; white-space: nowrap; }
+  .receipt-item-sub { font-size: 11px; padding-left: 8px; }
+  .receipt-grand-total { font-size: 15px; font-weight: 800; margin-top: 2px; }
+  .receipt-footer { text-align: center; font-size: 11px; margin-top: 4px; white-space: pre-wrap; }
+}
+
