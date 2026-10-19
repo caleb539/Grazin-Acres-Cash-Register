@@ -66,6 +66,18 @@ export function SalesHistory({ sales, onVoid, onClose }: Props) {
                     <span>{formatCents(l.line_total_cents)}</span>
                   </div>
                 ))}
+                {(s.membership_fee_cents ?? 0) > 0 && (
+                  <div className="row between small">
+                    <span>Membership renewal</span>
+                    <span>{formatCents(s.membership_fee_cents)}</span>
+                  </div>
+                )}
+                {(s.jar_credit_cents ?? 0) > 0 && (
+                  <div className="row between small">
+                    <span>Jar returns ({s.jar_returns})</span>
+                    <span>−{formatCents(s.jar_credit_cents)}</span>
+                  </div>
+                )}
                 {s.upload_error && <div className="error small">Upload error: {s.upload_error}</div>}
                 {!s.voided && voiding !== s.id && (
                   <button type="button" className="btn btn-danger-ghost" onClick={() => { setVoiding(s.id); setReason(''); setError(null); }}>

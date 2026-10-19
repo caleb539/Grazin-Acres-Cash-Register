@@ -50,7 +50,7 @@ export async function downloadCatalog(): Promise<Catalog> {
     fetchAll<Product>('register_products',
       'id, farmmatch_id, name, category, sale_type, unit, price_cents, taxable, sort_order'),
     fetchAll<Member>('member_lookup', '*'),
-    db().from('settings').select('store_name, tax_rate, expiring_soon_days, receipt_footer').single(),
+    db().from('settings').select('store_name, tax_rate, expiring_soon_days, receipt_footer, jar_credit_cents, membership_fee_cents').single(),
   ]);
   if (settingsRes.error) throw new Error(settingsRes.error.message);
   const settings = settingsRes.data as Settings;
@@ -95,6 +95,9 @@ export async function uploadSale(sale: LocalSale): Promise<LocalSale> {
     cash_tendered_cents: s.cash_tendered_cents,
     check_number: s.check_number,
     tax_cents: s.tax_cents,
+    membership_fee_cents: s.membership_fee_cents ?? 0,
+    jar_returns: s.jar_returns ?? 0,
+    jar_credit_cents: s.jar_credit_cents ?? 0,
     total_cents: s.total_cents,
     lines: s.lines.map((l) => ({
       product_id: l.product_id,

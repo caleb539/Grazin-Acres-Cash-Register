@@ -78,6 +78,10 @@ h1, h2 { margin: 0; }
 .step:active { background: var(--secondary); }
 .step-qty { min-width: 32px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
 .cart-foot { padding: 12px 16px 16px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
+.jar-row { display: grid; grid-template-columns: minmax(0, 1fr) auto 76px; align-items: center; gap: 8px; padding-bottom: 8px; border-bottom: 1px dashed var(--line); }
+.jar-label { font-weight: 600; }
+.jar-credit { color: var(--ok); }
+.step:disabled { opacity: 0.35; }
 .total-row { font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
 
 /* ---------- buttons ---------- */
@@ -100,6 +104,7 @@ h1, h2 { margin: 0; }
 .badge { display: inline-block; font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
 .badge-active { background: var(--ok-bg); color: var(--ok); }
 .badge-expiring_soon { background: var(--warn-bg); color: var(--warn); }
+.badge-renewed_in_store { background: var(--ok-bg); color: var(--ok); }
 .badge-expired { background: var(--bad-bg); color: var(--bad); }
 .badge-none, .badge-pending { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
 .chip { display: inline-block; font-size: 13px; font-weight: 700; padding: 6px 10px; border-radius: 999px; border: 0; white-space: nowrap; }
@@ -109,6 +114,9 @@ h1, h2 { margin: 0; }
 .chip-muted { background: var(--bg); color: var(--muted); }
 .alert { border-radius: 10px; padding: 10px 12px; font-weight: 600; font-size: 14px; }
 .alert-warn { background: var(--warn-bg); color: var(--warn); }
+.alert-ok { background: var(--ok-bg); color: var(--ok); }
+.alert-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.line-fee { background: var(--warn-bg); margin: 6px -8px 0; padding: 10px 8px; border-radius: 10px; border-bottom: 0; }
 .alert-bad { background: var(--bad-bg); color: var(--bad); }
 .warn-box { display: flex; gap: 12px; align-items: flex-start; background: var(--warn-bg); color: var(--warn); border-radius: 12px; padding: 14px; font-weight: 600; cursor: pointer; }
 .warn-box input { width: 24px; height: 24px; flex: none; margin: 0; }

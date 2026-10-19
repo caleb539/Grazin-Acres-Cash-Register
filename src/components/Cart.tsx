@@ -1,5 +1,6 @@
 import { formatCents, formatQty, lineTotalCents } from '../lib/money';
-import type { CartLine, Customer } from '../lib/types';
+import { canAddRenewal } from '../lib/membership';
+import type { CartLine, Customer, MembershipStatus } from '../lib/types';
 import { formatDate, MembershipBadge } from './MembershipBadge';
 
 interface Props {
@@ -8,6 +9,15 @@ interface Props {
   subtotalCents: number;
   taxCents: number;
   totalCents: number;
+  /** Status after local renewals are counted (null for new signups / no customer). */
+  membershipStatus: MembershipStatus | null;
+  membershipFeeCents: number;
+  feeRateCents: number;
+  onSetFee: (on: boolean) => void;
+  jarReturns: number;
+  jarRateCents: number;
+  jarCreditCents: number;
+  onChangeJars: (delta: number) => void;
   onPickCustomer: () => void;
   onClearCustomer: () => void;
   onChangeQty: (key: string, deltaWhole: number) => void;
@@ -18,9 +28,20 @@ interface Props {
 }
 
 export function Cart(props: Props) {
-  const { customer, lines, subtotalCents, taxCents, totalCents } = props;
+  const { customer, lines, subtotalCents, taxCents, totalCents, jarReturns, jarRateCents, jarCreditCents } = props;
+  // More jars than the order is worth: the credit stops at the order total.
+  const jarsCapped = jarReturns * jarRateCents > jarCreditCents;
+  const jarsCredited = jarRateCents > 0 ? Math.floor(jarCreditCents / jarRateCents) : 0;
   const member = customer?.kind === 'member' ? customer.member : null;
-  const canPay = customer !== null && lines.length > 0;
+  const status = props.membershipStatus;
+  const feeCents = props.membershipFeeCents;
+  const renewalDate = member?.renewal_date ? formatDate(member.renewal_date) : null;
+  const addRenewal = (
+    <button type="button" className="btn btn-small" onClick={() => props.onSetFee(true)}>
+      + Add renewal {formatCents(props.feeRateCents)}
+    </button>
+  );
+  const canPay = customer !== null && (lines.length > 0 || feeCents > 0);
 
   return (
     <section className="cart">
@@ -33,7 +54,9 @@ export function Cart(props: Props) {
                   ? customer.member.full_name
                   : `${customer.pending.first_name} ${customer.pending.last_name}`}
               </div>
-              {member ? <MembershipBadge member={member} /> : <span className="badge badge-pending">New signup · links at sync</span>}
+              {member
+                ? <MembershipBadge member={{ ...member, membership_status: status ?? member.membership_status }} />
+                : <span className="badge badge-pending">New signup · links at sync</span>}
             </div>
             <button type="button" className="btn btn-ghost" onClick={props.onPickCustomer}>Change</button>
             <button type="button" className="btn btn-ghost" onClick={props.onClearCustomer} aria-label="Remove customer">✕</button>
@@ -43,18 +66,47 @@ export function Cart(props: Props) {
             👤 Select customer
           </button>
         )}
-        {member?.membership_status === 'expired' && (
-          <div className="alert alert-bad">
-            Membership expired {member.renewal_date && formatDate(member.renewal_date)}. Ask them to renew in Farmmatch.
+        {status === 'expired' && (
+          <div className={`alert ${feeCents > 0 ? 'alert-warn' : 'alert-bad'} alert-row`}>
+            <span>
+              Membership expired{renewalDate && ` ${renewalDate}`}.{' '}
+              {feeCents > 0 ? `${formatCents(feeCents)} renewal added to this order.` : 'Not renewing today.'}
+            </span>
+            {feeCents === 0 && addRenewal}
           </div>
         )}
-        {member?.membership_status === 'expiring_soon' && (
-          <div className="alert alert-warn">Membership renews {member.renewal_date && formatDate(member.renewal_date)}. Remind them.</div>
+        {status === 'expiring_soon' && feeCents === 0 && (
+          <div className="alert alert-warn alert-row">
+            <span>Membership renews{renewalDate && ` ${renewalDate}`}.</span>
+            {addRenewal}
+          </div>
+        )}
+        {status === 'none' && feeCents === 0 && (
+          <div className="alert alert-warn alert-row">
+            <span>No membership on file.</span>
+            {addRenewal}
+          </div>
+        )}
+        {status === 'renewed_in_store' && (
+          <div className="alert alert-ok">Renewed at the register. FarmMatch updates at the weekly posting.</div>
         )}
       </div>
 
       <div className="cart-lines">
-        {lines.length === 0 && <p className="muted center pad">Tap products to add them.</p>}
+        {feeCents > 0 && (
+          <div className="line line-fee">
+            <div className="line-info">
+              <div className="line-name">Membership renewal</div>
+              <div className="muted small">{status === 'expired' ? 'Added because the membership expired' : 'Added by cashier'}</div>
+            </div>
+            <span />
+            <div className="line-total">{formatCents(feeCents)}</div>
+            {status !== null && canAddRenewal(status) && (
+              <button type="button" className="line-remove" onClick={() => props.onSetFee(false)} aria-label="Remove membership renewal">✕</button>
+            )}
+          </div>
+        )}
+        {lines.length === 0 && feeCents === 0 && <p className="muted center pad">Tap products to add them.</p>}
         {lines.map((l) => (
           <div key={l.key} className="line">
             <div className="line-info">
@@ -81,15 +133,36 @@ export function Cart(props: Props) {
       </div>
 
       <div className="cart-foot">
-        {taxCents > 0 && (
-          <>
-            <div className="row between muted"><span>Subtotal</span><span>{formatCents(subtotalCents)}</span></div>
-            <div className="row between muted"><span>Tax</span><span>{formatCents(taxCents)}</span></div>
-          </>
+        <div className="jar-row">
+          <div className="grow">
+            <div className="jar-label">Jar returns</div>
+            <div className="muted small">{formatCents(jarRateCents)} credit per jar</div>
+          </div>
+          <div className="stepper">
+            <button type="button" className="step" onClick={() => props.onChangeJars(-1)} disabled={jarReturns === 0} aria-label="Fewer jars">−</button>
+            <span className="step-qty">{jarReturns}</span>
+            <button type="button" className="step" onClick={() => props.onChangeJars(1)} aria-label="More jars">+</button>
+          </div>
+          <div className="line-total jar-credit">{jarCreditCents > 0 ? `−${formatCents(jarCreditCents)}` : ''}</div>
+        </div>
+        {jarsCapped && (
+          <div className="alert alert-warn small">
+            Credit stops at the order total: {jarsCredited} of {jarReturns} jars credited.
+          </div>
+        )}
+        {(taxCents > 0 || jarCreditCents > 0 || feeCents > 0) && (
+          <div className="row between muted"><span>Subtotal</span><span>{formatCents(subtotalCents)}</span></div>
+        )}
+        {taxCents > 0 && <div className="row between muted"><span>Tax</span><span>{formatCents(taxCents)}</span></div>}
+        {feeCents > 0 && (
+          <div className="row between muted"><span>Membership renewal</span><span>{formatCents(feeCents)}</span></div>
+        )}
+        {jarCreditCents > 0 && (
+          <div className="row between muted"><span>Jar credit ({jarReturns} {jarReturns === 1 ? 'jar' : 'jars'})</span><span>−{formatCents(jarCreditCents)}</span></div>
         )}
         <div className="row between total-row"><span>Total</span><span>{formatCents(totalCents)}</span></div>
         <div className="row gap">
-          <button type="button" className="btn btn-lg btn-ghost" onClick={props.onClear} disabled={lines.length === 0 && !customer}>
+          <button type="button" className="btn btn-lg btn-ghost" onClick={props.onClear} disabled={lines.length === 0 && !customer && jarReturns === 0}>
             Clear
           </button>
           <button type="button" className="btn btn-xl btn-primary grow" disabled={!canPay} onClick={props.onPay}>

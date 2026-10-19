@@ -1,6 +1,6 @@
 export type SaleType = 'each' | 'weight';
 export type Tender = 'cash' | 'check' | 'card_on_file';
-export type MembershipStatus = 'active' | 'expiring_soon' | 'expired' | 'none';
+export type MembershipStatus = 'active' | 'expiring_soon' | 'expired' | 'none' | 'renewed_in_store';
 
 export interface Product {
   id: string;
@@ -34,6 +34,10 @@ export interface Settings {
   tax_rate: number;
   expiring_soon_days: number;
   receipt_footer: string;
+  /** Credit per returned jar, in cents (default 100 = $1). */
+  jar_credit_cents: number;
+  /** Membership renewal fee, in cents (default 3000 = $30). */
+  membership_fee_cents: number;
 }
 
 export interface PendingCustomer {
@@ -74,6 +78,9 @@ export interface LocalSale {
   }[];
   subtotal_cents: number;
   tax_cents: number;
+  membership_fee_cents: number;
+  jar_returns: number;
+  jar_credit_cents: number;
   total_cents: number;
   tender: Tender;
   cash_tendered_cents: number | null;

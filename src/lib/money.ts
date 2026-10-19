@@ -46,3 +46,8 @@ export function quickCashOptions(totalCents: number): number[] {
   }
   return [...opts].sort((a, b) => a - b).slice(0, 6);
 }
+
+/** Jar return credit: jars x rate, never more than the order (so the total can't go below $0). */
+export function jarCreditCents(jars: number, rateCents: number, orderCents: number): number {
+  return Math.min(Math.max(0, jars) * rateCents, Math.max(0, orderCents));
+}

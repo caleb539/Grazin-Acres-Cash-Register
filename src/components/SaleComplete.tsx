@@ -23,6 +23,14 @@ export function SaleComplete({ sale, onNext }: { sale: LocalSale; onNext: () => 
             {sale.check_number && <div className="muted">Check #{sale.check_number}</div>}
           </>
         )}
+        {(sale.membership_fee_cents ?? 0) > 0 && (
+          <div className="muted">Includes {formatCents(sale.membership_fee_cents)} membership renewal</div>
+        )}
+        {(sale.jar_credit_cents ?? 0) > 0 && (
+          <div className="muted">
+            Includes {formatCents(sale.jar_credit_cents)} jar credit ({sale.jar_returns} {sale.jar_returns === 1 ? 'jar' : 'jars'})
+          </div>
+        )}
         <div className="muted small pad-y">Receipt {sale.receipt_number}</div>
         <div className="row gap">
           <button type="button" className="btn btn-lg btn-ghost grow" disabled title="Receipt printer setup comes next">

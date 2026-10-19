@@ -10,7 +10,8 @@ import { SalesHistory } from './components/SalesHistory';
 import { WeightPad } from './components/WeightPad';
 import { hasSession, signOut } from './lib/backend';
 import { getCashier, getDeviceId, nextReceiptNumber, setCashier } from './lib/local';
-import { lineTotalCents, taxCents } from './lib/money';
+import { jarCreditCents, lineTotalCents, taxCents } from './lib/money';
+import { effectiveStatus, feeAddedByDefault } from './lib/membership';
 import { packageSizeMilli } from './lib/packageSize';
 import type { CartLine, Customer, LocalSale, Product } from './lib/types';
 import { useRegister } from './lib/useRegister';
@@ -53,6 +54,8 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
   const { catalog } = data;
   const [lines, setLines] = useState<CartLine[]>([]);
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [jarReturns, setJarReturns] = useState(0);
+  const [feeOn, setFeeOn] = useState(false);
   const [cashier, setCashierState] = useState(getCashier);
   const [overlay, setOverlay] = useState<Overlay>(() => (getCashier() ? null : { kind: 'cashier' }));
 
@@ -66,8 +69,21 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
       if (l.product.taxable) taxable += t;
     }
     const tax = taxCents(taxable, settings?.tax_rate ?? 0);
-    return { subtotal, tax, total: subtotal + tax };
-  }, [lines, settings]);
+    // Older cached catalogs predate the setting; $1 is the default.
+    const jarRate = settings?.jar_credit_cents ?? 100;
+    const feeRate = settings?.membership_fee_cents ?? 3000;
+    const fee = feeOn ? feeRate : 0;
+    const jarCredit = jarCreditCents(jarReturns, jarRate, subtotal + tax + fee);
+    return { subtotal, tax, feeRate, fee, jarRate, jarCredit, total: subtotal + tax + fee - jarCredit };
+  }, [lines, settings, jarReturns, feeOn]);
+
+  const memberStatus = customer?.kind === 'member' ? effectiveStatus(customer.member, data.sales) : null;
+
+  // Picking a customer with an expired membership adds the renewal fee; the cashier can remove it.
+  const pickCustomer = (c: Customer | null) => {
+    setCustomer(c);
+    setFeeOn(c?.kind === 'member' && feeAddedByDefault(effectiveStatus(c.member, data.sales)));
+  };
 
   const addProduct = useCallback((p: Product) => {
     if (p.sale_type === 'weight') {
@@ -96,7 +112,7 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
       .map((l) => (l.key === key ? { ...l, qtyMilli: l.qtyMilli + delta * 1000 } : l))
       .filter((l) => l.qtyMilli > 0));
 
-  const clearSale = () => { setLines([]); setCustomer(null); };
+  const clearSale = () => { setLines([]); setCustomer(null); setJarReturns(0); setFeeOn(false); };
 
   const completeSale = (payment: Payment) => {
     if (!customer) return;
@@ -119,6 +135,9 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
       })),
       subtotal_cents: totals.subtotal,
       tax_cents: totals.tax,
+      membership_fee_cents: totals.fee,
+      jar_returns: jarReturns,
+      jar_credit_cents: totals.jarCredit,
       total_cents: totals.total,
       ...payment,
       upload: demo ? 'demo' : 'queued',
@@ -168,8 +187,16 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
           subtotalCents={totals.subtotal}
           taxCents={totals.tax}
           totalCents={totals.total}
+          membershipStatus={memberStatus}
+          membershipFeeCents={totals.fee}
+          feeRateCents={totals.feeRate}
+          onSetFee={setFeeOn}
+          jarReturns={jarReturns}
+          jarRateCents={totals.jarRate}
+          jarCreditCents={totals.jarCredit}
+          onChangeJars={(delta) => setJarReturns((n) => Math.max(0, n + delta))}
           onPickCustomer={() => setOverlay({ kind: 'customer' })}
-          onClearCustomer={() => setCustomer(null)}
+          onClearCustomer={() => pickCustomer(null)}
           onChangeQty={changeQty}
           onEditWeight={(l) => setOverlay({ kind: 'weight', product: l.product, editKey: l.key, initialMilli: l.qtyMilli })}
           onRemove={(key) => setLines((prev) => prev.filter((l) => l.key !== key))}
@@ -181,7 +208,7 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
       {overlay?.kind === 'customer' && (
         <CustomerPicker
           members={catalog.members}
-          onPick={(c) => { setCustomer(c); setOverlay(null); }}
+          onPick={(c) => { pickCustomer(c); setOverlay(null); }}
           onCancel={() => setOverlay(null)}
         />
       )}

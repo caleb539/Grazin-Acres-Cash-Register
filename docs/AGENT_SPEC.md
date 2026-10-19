@@ -138,6 +138,8 @@ Read the view **`agent_sales_to_post`**. Each row is one sale. Rows come back in
 | `tender` | `"cash"`, `"check"`, or `"card_on_file"`. |
 | `check_number` | For checks. |
 | `subtotal`, `tax`, `total` | Dollars. |
+| `membership_fee` | Membership renewal paid at the register, in dollars ($30 by default, or 0). **Included in `total`**, so `total = subtotal + tax + membership_fee - jar_credit`. |
+| `jar_returns`, `jar_credit` | Jars returned in store and the credit given, in dollars ($1/jar by default, never more than the order). **`total` is already after the jar credit**, so `total = subtotal + tax - jar_credit`. |
 | `lines` | JSON array, one item per line (below). |
 | `farmmatch_order_ref` | For `reverse` rows: the order you created when posting. |
 | `posting_attempts`, `posting_error` | Previous failures, if any. |
@@ -153,6 +155,12 @@ Each item in `lines`:
 - For `weight` lines, `quantity` is the weight in `unit` (up to 3 decimals).
 - `unit_price` is the price **the cashier actually charged**. Use it rather than the current Farmmatch price, because a price may have changed since the sale.
 - `line_total` = quantity × unit_price, rounded to the cent.
+
+### Membership renewals
+If `membership_fee` > 0, the customer renewed at the register. In FarmMatch, renew that customer's membership (extend the renewal date the same way an online renewal would) and record the fee as part of the order, so the FarmMatch order total matches `total`. Until FarmMatch's renewal date moves forward, the register shows the customer as "Renewed in store" and won't charge them again. Once the next sync brings in the new date, they show as Active.
+
+### Jar returns
+If `jar_credit` > 0, the order in FarmMatch must come to the same `total`. Apply the jar credit the same way FarmMatch records jar returns ($1 per jar), noting `jar_returns` jars and the receipt number. Don't post the items at full price and then also issue a separate jar credit, because that credits the customer twice.
 
 ### Tender handling in Farmmatch
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { lineTotalCents, parseQtyMilli, quickCashOptions, taxCents, formatQty } from './money';
+import { jarCreditCents, lineTotalCents, parseQtyMilli, quickCashOptions, taxCents, formatQty } from './money';
 
 describe('lineTotalCents', () => {
   it('matches the database for the tested weighed sale', () => {
@@ -51,5 +51,14 @@ describe('quickCashOptions', () => {
   });
   it('does not duplicate when total is round', () => {
     expect(quickCashOptions(2000)).toEqual([2000, 5000, 10000]);
+  });
+});
+
+describe('jarCreditCents', () => {
+  it('credits $1 per jar', () => expect(jarCreditCents(3, 100, 1400)).toBe(300));
+  it('caps at the order total', () => expect(jarCreditCents(20, 100, 1400)).toBe(1400));
+  it('is zero with no jars or no order', () => {
+    expect(jarCreditCents(0, 100, 1400)).toBe(0);
+    expect(jarCreditCents(5, 100, 0)).toBe(0);
   });
 });

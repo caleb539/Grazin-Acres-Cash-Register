@@ -57,4 +57,6 @@ export const demoSettings: Settings = {
   tax_rate: 0,
   expiring_soon_days: 14,
   receipt_footer: 'Thank you!',
+  jar_credit_cents: 100,
+  membership_fee_cents: 3000,
 };

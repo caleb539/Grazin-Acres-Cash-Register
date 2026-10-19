@@ -5,6 +5,7 @@ const LABEL: Record<Member['membership_status'], string> = {
   expiring_soon: 'Renews soon',
   expired: 'Expired',
   none: 'No membership',
+  renewed_in_store: 'Renewed in store',
 };
 
 export function formatDate(iso: string): string {
@@ -17,7 +18,7 @@ export function MembershipBadge({ member }: { member: Member }) {
   return (
     <span className={`badge badge-${s}`}>
       {LABEL[s]}
-      {member.renewal_date && s !== 'none' && <> · {formatDate(member.renewal_date)}</>}
+      {member.renewal_date && s !== 'none' && s !== 'renewed_in_store' && <> · {formatDate(member.renewal_date)}</>}
     </span>
   );
 }
