@@ -180,7 +180,7 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
         </div>
         <div className="topbar-right">
           <SyncStatus data={data} demo={demo} onOpenHistory={() => setOverlay({ kind: 'history' })} />
-          <button type="button" className="btn btn-ghost" onClick={() => setOverlay({ kind: 'history' })}>Today's sales</button>
+          <button type="button" className="btn btn-ghost" onClick={() => setOverlay({ kind: 'history' })}>Sales</button>
           <button type="button" className="btn btn-ghost" onClick={() => setOverlay({ kind: 'cashier' })}>
             👤 {cashier || 'Cashier'}
           </button>
@@ -237,7 +237,7 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
         <SaleComplete sale={overlay.sale} onPrint={() => handlePrint(overlay.sale)} onNext={() => setOverlay(null)} />
       )}
       {overlay?.kind === 'history' && (
-        <SalesHistory sales={data.sales} onVoid={data.voidSale} onPrint={handlePrint} onClose={() => setOverlay(null)} />
+        <SalesHistory demo={demo} sales={data.sales} onVoid={data.voidSale} onPrint={handlePrint} onClose={() => setOverlay(null)} />
       )}
       {overlay?.kind === 'cashier' && (
         <CashierPrompt

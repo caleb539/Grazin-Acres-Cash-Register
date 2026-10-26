@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
 import { formatCents, formatQty } from '../lib/money';
 import type { LocalSale } from '../lib/types';
+import { AllOrders } from './AllOrders';
 import { Modal } from './Modal';
 
 interface Props {
+  demo: boolean;
   sales: LocalSale[];
   onVoid: (sale: LocalSale, reason: string) => Promise<string | null>;
   onPrint: (sale: LocalSale) => void;
@@ -22,7 +24,8 @@ function isToday(iso: string): boolean {
   return new Date(iso).toDateString() === new Date().toDateString();
 }
 
-export function SalesHistory({ sales, onVoid, onPrint, onClose }: Props) {
+export function SalesHistory({ demo, sales, onVoid, onPrint, onClose }: Props) {
+  const [tab, setTab] = useState<'today' | 'all'>('today');
   const today = useMemo(
     () => sales.filter((s) => isToday(s.sold_at)).sort((a, b) => b.sold_at.localeCompare(a.sold_at)),
     [sales],
@@ -39,7 +42,16 @@ export function SalesHistory({ sales, onVoid, onPrint, onClose }: Props) {
   }));
 
   return (
-    <Modal title="Today's sales" onClose={onClose} wide>
+    <Modal title="Sales" onClose={onClose} wide>
+      <div className="tender-tabs history-tabs" role="tablist">
+        <button type="button" role="tab" aria-selected={tab === 'today'} className={`tender-tab${tab === 'today' ? ' active' : ''}`} onClick={() => setTab('today')}>
+          Today on this register
+        </button>
+        <button type="button" role="tab" aria-selected={tab === 'all'} className={`tender-tab${tab === 'all' ? ' active' : ''}`} onClick={() => setTab('all')}>
+          All orders
+        </button>
+      </div>
+      {tab === 'all' ? <AllOrders demo={demo} localSales={sales} onPrint={onPrint} /> : <>
       <div className="totals-strip">
         {totals.map(({ t, cents }) => (
           <div key={t}><span className="muted small">{TENDER[t]}</span><strong>{formatCents(cents)}</strong></div>
@@ -122,6 +134,7 @@ export function SalesHistory({ sales, onVoid, onPrint, onClose }: Props) {
           </div>
         ))}
       </div>
+      </>}
     </Modal>
   );
 }

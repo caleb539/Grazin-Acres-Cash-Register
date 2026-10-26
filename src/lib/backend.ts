@@ -120,3 +120,95 @@ export async function voidSaleOnServer(saleId: string, reason: string): Promise<
   const { error } = await db().rpc('void_sale', { p_sale_id: saleId, p_reason: reason });
   if (error) throw new Error(error.message);
 }
+
+// ---------------------------------------------------------------------------
+// All orders (every device, every day), read back from the database.
+// ---------------------------------------------------------------------------
+
+export type PostingStatus = 'unposted' | 'posted' | 'failed' | 'needs_reversal' | 'reversed' | 'not_needed';
+
+/** A sale as stored on the server, shaped like LocalSale so the same receipt/detail code can show it. */
+export interface ServerOrder extends LocalSale {
+  posting_status: PostingStatus;
+  farmmatch_order_ref: string | null;
+  void_reason: string | null;
+}
+
+export const ORDERS_LIMIT = 1000;
+
+const ORDER_SELECT = `
+  id, receipt_number, device_id, cashier_name, sold_at, tender, check_number,
+  subtotal_cents, tax_cents, membership_fee_cents, jar_returns, jar_credit_cents, total_cents,
+  cash_tendered_cents, change_cents, status, void_reason, posting_status, farmmatch_order_ref,
+  member:members(id, farmmatch_id, first_name, last_name, email, phone),
+  pending:pending_customers(first_name, last_name, phone, email),
+  sale_lines(line_no, product_id, product_name, sale_type, unit, quantity, unit_price_cents, line_total_cents, taxable)`;
+
+function toOrder(r: any): ServerOrder {
+  const m = r.member;
+  const customer: LocalSale['customer'] = m
+    ? {
+        kind: 'member',
+        member: {
+          id: m.id, farmmatch_id: m.farmmatch_id, first_name: m.first_name, last_name: m.last_name,
+          full_name: `${m.first_name ?? ''} ${m.last_name ?? ''}`.trim(), email: m.email, phone: m.phone,
+          phone_digits: null, membership_type: null, renewal_date: null, has_card_on_file: false,
+          membership_status: 'none',
+        },
+      }
+    : {
+        kind: 'pending',
+        pending: {
+          first_name: r.pending?.first_name ?? '?', last_name: r.pending?.last_name ?? '',
+          phone: r.pending?.phone ?? '', email: r.pending?.email ?? '',
+        },
+      };
+  const lines = [...(r.sale_lines ?? [])]
+    .sort((a, b) => a.line_no - b.line_no)
+    .map((l) => ({
+      product_id: l.product_id,
+      name: l.product_name,
+      sale_type: l.sale_type,
+      unit: l.unit,
+      qtyMilli: Math.round(Number(l.quantity) * 1000),
+      unit_price_cents: l.unit_price_cents,
+      line_total_cents: l.line_total_cents,
+      taxable: l.taxable,
+    }));
+  return {
+    id: r.id, receipt_number: r.receipt_number, device_id: r.device_id, cashier_name: r.cashier_name ?? '',
+    sold_at: r.sold_at, customer, lines,
+    subtotal_cents: r.subtotal_cents, tax_cents: r.tax_cents, membership_fee_cents: r.membership_fee_cents ?? 0,
+    jar_returns: r.jar_returns ?? 0, jar_credit_cents: r.jar_credit_cents ?? 0, total_cents: r.total_cents,
+    tender: r.tender, cash_tendered_cents: r.cash_tendered_cents, change_cents: r.change_cents,
+    check_number: r.check_number, upload: 'uploaded', voided: r.status === 'voided',
+    posting_status: r.posting_status, farmmatch_order_ref: r.farmmatch_order_ref, void_reason: r.void_reason,
+  };
+}
+
+/**
+ * Orders newest first. `since` limits to orders on or after that time; `search`
+ * matches a receipt number or a customer's first/last name. At most ORDERS_LIMIT rows.
+ */
+export async function fetchOrders(opts: { since?: Date; search?: string } = {}): Promise<ServerOrder[]> {
+  let q = db().from('sales').select(ORDER_SELECT).order('sold_at', { ascending: false }).limit(ORDERS_LIMIT);
+  if (opts.since) q = q.gte('sold_at', opts.since.toISOString());
+
+  const term = opts.search?.trim().replace(/[,()*%]/g, ' ').trim();
+  if (term) {
+    const words = term.split(/\s+/);
+    // Customer names live on members; find matching ids first, then match receipts or those ids.
+    let mq = db().from('members').select('id').limit(500);
+    for (const w of words) mq = mq.or(`first_name.ilike.*${w}*,last_name.ilike.*${w}*`);
+    const { data: mems, error: mErr } = await mq;
+    if (mErr) throw new Error(mErr.message);
+    const ids = (mems ?? []).map((x: any) => x.id);
+    const clauses = [`receipt_number.ilike.*${term.replace(/\s+/g, '')}*`];
+    if (ids.length) clauses.push(`member_id.in.(${ids.join(',')})`);
+    q = q.or(clauses.join(','));
+  }
+
+  const { data, error } = await q;
+  if (error) throw new Error(error.message);
+  return (data ?? []).map(toOrder);
+}

@@ -176,6 +176,10 @@ h1, h2 { margin: 0; }
 .totals-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .totals-strip > div { background: var(--bg); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; font-variant-numeric: tabular-nums; }
 .totals-strip strong { font-size: 18px; }
+.history-tabs { grid-template-columns: repeat(2, 1fr); }
+.all-orders { display: flex; flex-direction: column; gap: 12px; }
+.orders-filters { display: flex; flex-direction: column; gap: 8px; }
+.order-when { min-width: 92px; }
 .history-list { display: flex; flex-direction: column; gap: 6px; }
 .history-item { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
 .history-item.voided .history-row { text-decoration: line-through; color: var(--muted); }
