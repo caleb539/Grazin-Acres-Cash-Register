@@ -19,6 +19,7 @@ export function Receipt({ sale, settings }: { sale: LocalSale; settings: Setting
   return (
     <div className="print-receipt" aria-hidden="true">
       <div className="receipt-header">
+        <img className="receipt-logo" src="/logo.png" alt="" />
         <div className="receipt-store">{settings.store_name || "Grazin' Acres"}</div>
         <div className="receipt-meta">
           {soldDate.toLocaleDateString()} · {soldDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}

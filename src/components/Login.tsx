@@ -24,7 +24,7 @@ export function Login({ onSignedIn, onDemo }: Props) {
           if (err) setError(err); else onSignedIn();
         }}
       >
-        <img src="/icon.svg" alt="" width={72} height={72} />
+        <img className="login-logo" src="/logo.png" alt="Grazin' Acres Farm Pantry" />
         <h1>Grazin' Acres Register</h1>
         {isConfigured ? (
           <>

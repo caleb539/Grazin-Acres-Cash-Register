@@ -9,12 +9,13 @@ import { Receipt } from './components/Receipt';
 import { SaleComplete } from './components/SaleComplete';
 import { SalesHistory } from './components/SalesHistory';
 import { WeightPad } from './components/WeightPad';
-import { hasSession, signOut } from './lib/backend';
+import { fetchUsualRows, hasSession, signOut } from './lib/backend';
 import { getCashier, getDeviceId, nextReceiptNumber, setCashier } from './lib/local';
 import { jarCreditCents, lineTotalCents, taxCents } from './lib/money';
 import { effectiveStatus, feeAddedByDefault } from './lib/membership';
 import { packageSizeMilli } from './lib/packageSize';
 import { unitPriceFor } from './lib/pricing';
+import { rankUsuals, type UsualRow } from './lib/usuals';
 
 /** Change a line's quantity; its price follows FarmMatch's quantity tiers. */
 const withQty = (l: CartLine, qtyMilli: number): CartLine => ({ ...l, qtyMilli, unitPriceCents: unitPriceFor(l.product, qtyMilli) });
@@ -61,6 +62,24 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [jarReturns, setJarReturns] = useState(0);
   const [feeOn, setFeeOn] = useState(false);
+  const [usualRows, setUsualRows] = useState<UsualRow[]>([]);
+  const memberId = customer?.kind === 'member' ? customer.member.id : null;
+
+  // The picked customer's purchase history (server); this iPad's unsent sales are added in rankUsuals.
+  useEffect(() => {
+    setUsualRows([]);
+    if (!memberId || demo) return;
+    let cancelled = false;
+    fetchUsualRows(memberId)
+      .then((rows) => { if (!cancelled) setUsualRows(rows); })
+      .catch(() => { /* offline: the local sales below still give usuals */ });
+    return () => { cancelled = true; };
+  }, [memberId, demo]);
+
+  const usuals = useMemo(
+    () => (memberId && catalog ? rankUsuals(usualRows, data.sales, memberId, catalog.products) : []),
+    [memberId, catalog, usualRows, data.sales],
+  );
   const [cashier, setCashierState] = useState(getCashier);
   const [overlay, setOverlay] = useState<Overlay>(() => (getCashier() ? null : { kind: 'cashier' }));
   const [printSale, setPrintSale] = useState<LocalSale | null>(null);
@@ -178,7 +197,7 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
       {printSale && <Receipt sale={printSale} settings={catalog.settings} />}
       <header className="topbar">
         <div className="brand">
-          <img src="/icon.svg" alt="" width={32} height={32} />
+          <img className="brand-logo" src="/logo-small.png" alt="" height={44} />
           <span>{catalog.settings.store_name}</span>
           {demo && <span className="chip chip-warn">DEMO</span>}
         </div>
@@ -193,7 +212,12 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
       </header>
 
       <main className="main">
-        <ProductGrid products={catalog.products} onPick={addProduct} />
+        <ProductGrid
+          products={catalog.products}
+          onPick={addProduct}
+          usuals={usuals}
+          customerFirstName={customer?.kind === 'member' ? (customer.member.first_name ?? customer.member.full_name) : null}
+        />
         <Cart
           customer={customer}
           lines={lines}

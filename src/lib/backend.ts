@@ -3,6 +3,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Catalog } from './local';
 import { milliToNumber } from './money';
 import type { LocalSale, Member, PriceTier, Product, Settings } from './types';
+import type { UsualRow } from './usuals';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const key = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY) as string | undefined;
@@ -224,4 +225,16 @@ export async function fetchOrders(opts: { since?: Date; search?: string } = {}):
   const { data, error } = await q;
   if (error) throw new Error(error.message);
   return (data ?? []).map(toOrder);
+}
+
+/** A customer's register purchase history, summarised per product (see member_top_products). */
+export async function fetchUsualRows(memberId: string): Promise<UsualRow[]> {
+  const { data, error } = await db()
+    .from('member_top_products')
+    .select('product_id, times_bought, last_bought_at')
+    .eq('member_id', memberId)
+    .order('times_bought', { ascending: false })
+    .limit(40);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as UsualRow[];
 }
