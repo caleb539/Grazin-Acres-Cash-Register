@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { formatCents } from '../lib/money';
+import { bulkTiers, tierLabel } from '../lib/pricing';
 import type { Product } from '../lib/types';
 
 interface Props {
@@ -60,6 +61,11 @@ export function ProductGrid({ products, onPick }: Props) {
               {formatCents(p.price_cents)}
               {p.sale_type === 'weight' && <span className="tile-unit">/{p.unit}</span>}
             </span>
+            {bulkTiers(p).length > 0 && (
+              <span className="tile-tiers">
+                {bulkTiers(p).map((t) => `${tierLabel(p, t)} ${formatCents(t.price_cents)}`).join(' · ')}
+              </span>
+            )}
             {p.sale_type === 'weight' && <span className="tile-tag">⚖ weigh</span>}
           </button>
         ))}

@@ -14,6 +14,10 @@ import { getCashier, getDeviceId, nextReceiptNumber, setCashier } from './lib/lo
 import { jarCreditCents, lineTotalCents, taxCents } from './lib/money';
 import { effectiveStatus, feeAddedByDefault } from './lib/membership';
 import { packageSizeMilli } from './lib/packageSize';
+import { unitPriceFor } from './lib/pricing';
+
+/** Change a line's quantity; its price follows FarmMatch's quantity tiers. */
+const withQty = (l: CartLine, qtyMilli: number): CartLine => ({ ...l, qtyMilli, unitPriceCents: unitPriceFor(l.product, qtyMilli) });
 import type { CartLine, Customer, LocalSale, Product } from './lib/types';
 import { useRegister } from './lib/useRegister';
 
@@ -99,8 +103,8 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
     }
     setLines((prev) => {
       const existing = prev.find((l) => l.product.id === p.id);
-      if (existing) return prev.map((l) => (l === existing ? { ...l, qtyMilli: l.qtyMilli + 1000 } : l));
-      return [...prev, { key: crypto.randomUUID(), product: p, qtyMilli: 1000, unitPriceCents: p.price_cents }];
+      if (existing) return prev.map((l) => (l === existing ? withQty(l, l.qtyMilli + 1000) : l));
+      return [...prev, { key: crypto.randomUUID(), product: p, qtyMilli: 1000, unitPriceCents: unitPriceFor(p, 1000) }];
     });
   }, []);
 
@@ -109,14 +113,14 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
     const { product, editKey } = overlay;
     setLines((prev) =>
       editKey
-        ? prev.map((l) => (l.key === editKey ? { ...l, qtyMilli } : l))
-        : [...prev, { key: crypto.randomUUID(), product, qtyMilli, unitPriceCents: product.price_cents }]);
+        ? prev.map((l) => (l.key === editKey ? withQty(l, qtyMilli) : l))
+        : [...prev, { key: crypto.randomUUID(), product, qtyMilli, unitPriceCents: unitPriceFor(product, qtyMilli) }]);
     setOverlay(null);
   };
 
   const changeQty = (key: string, delta: number) =>
     setLines((prev) => prev
-      .map((l) => (l.key === key ? { ...l, qtyMilli: l.qtyMilli + delta * 1000 } : l))
+      .map((l) => (l.key === key ? withQty(l, l.qtyMilli + delta * 1000) : l))
       .filter((l) => l.qtyMilli > 0));
 
   const clearSale = () => { setLines([]); setCustomer(null); setJarReturns(0); setFeeOn(false); };

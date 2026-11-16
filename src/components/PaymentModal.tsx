@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { formatCents, quickCashOptions } from '../lib/money';
+import { memberWarnings, warningDetail } from '../lib/membership';
 import type { Customer, Tender } from '../lib/types';
 import { Keypad } from './Keypad';
 import { Modal } from './Modal';
@@ -34,6 +35,9 @@ export function PaymentModal({ totalCents, customer, onPay, onCancel }: Props) {
   const change = cash - totalCents;
   const noCardOnFile =
     customer.kind === 'pending' || (customer.kind === 'member' && !customer.member.has_card_on_file);
+  const paymentWarning = customer.kind === 'member'
+    ? memberWarnings(customer.member).find((w) => w.kind === 'no_payment_method')
+    : undefined;
 
   const onCashKey = (k: string) =>
     setCashText((t) => (k === '⌫' ? t.slice(0, -1) : (t + k).replace(/^0+/, '').slice(0, 7)));
@@ -115,7 +119,9 @@ export function PaymentModal({ totalCents, customer, onPay, onCancel }: Props) {
               <span>
                 {customer.kind === 'pending'
                   ? 'New signup: make sure they added a card to their Farmmatch account.'
-                  : 'Farmmatch shows no card on file for this customer. Confirm they have one.'}
+                  : paymentWarning
+                    ? `Account incomplete. ${warningDetail(paymentWarning)}. Only use card on file once they've fixed it in FarmMatch; otherwise take cash or check.`
+                    : 'Farmmatch shows no card on file for this customer. Confirm they have one.'}
               </span>
             </label>
           )}

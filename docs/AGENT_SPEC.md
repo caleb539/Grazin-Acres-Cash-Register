@@ -119,6 +119,37 @@ Send **every Farmmatch account**, members and non-members alike. Every in-store 
 
 ---
 
+## Job 1c: Warnings on a customer's account
+
+When a customer's FarmMatch account is missing something the cashier should ask about, write a **warning** on their profile. The register shows it in red when the cashier selects that customer, and flags it in the customer search:
+
+> ⚠ **ACCOUNT INCOMPLETE**
+> Missing: Payment method
+
+**The message is only what's missing.** Use a few words, 60 characters max. The register adds "Account incomplete" and "Missing:" itself.
+
+| Kind | Use when | Example message |
+|---|---|---|
+| `no_payment_method` | No saved card, or the only card is expired (e.g. FarmMatch says "Buyer has no payment methods") | `Payment method` (default) · `Valid card (card on file expired)` |
+| `account_incomplete` | Signup/profile/agreement/fee not finished, so FarmMatch won't take their orders | `Signed membership agreement` · `Home address, signed agreement, membership fee` |
+| `other` | A short note for the cashier, shown as written (no "Missing:") | `Owes $12 from last week` |
+
+```sql
+select public.set_member_warning('<member farmmatch_id>', 'no_payment_method');                 -- "Missing: Payment method"
+select public.set_member_warning('<member farmmatch_id>', 'account_incomplete', 'Signed membership agreement');
+select public.clear_member_warning('<member farmmatch_id>', 'no_payment_method');                -- once it's fixed
+select public.clear_member_warning('<member farmmatch_id>');                                     -- clear all
+```
+Command line equivalents: `node tools/register.mjs set-warning <id> <kind> [message]`, `clear-warning <id> [kind]`, `warnings`.
+
+Rules:
+- **No error text, page names, IDs or explanations.** Anything over 60 characters is rejected with an error telling you to shorten it.
+- One warning per kind per customer. Setting the same kind again replaces it.
+- `no_payment_method` also marks the customer as having no card on file, so the register asks the cashier to confirm before using "Card on file". Clearing it marks them as having a card again.
+- **Clear warnings when they're resolved.** On each weekly sync, re-check customers who have warnings and clear the ones fixed in FarmMatch.
+- If a card-on-file sale fails to post because the customer has no payment method, mark the sale failed (`mark_sale_failed`) **and** set `no_payment_method` on the customer.
+- The older `set_member_farmmatch_issue(id, text)` still works. A "no payment method" note becomes `no_payment_method`, and other long notes are cut to 60 characters. Prefer `set_member_warning`.
+
 ## Job 2: Post weekly sales into Farmmatch
 
 ### Step 1: Read what needs posting

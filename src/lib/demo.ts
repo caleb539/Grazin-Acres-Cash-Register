@@ -18,7 +18,8 @@ export const demoProducts: Product[] = [
   p(5, 'Yogurt – Quart', 'Dairy', 700),
   p(6, 'Kefir – Quart', 'Dairy', 750),
   p(7, 'Cheddar Cheese', 'Dairy', 1200, 'weight'),
-  p(10, 'Eggs – Dozen', 'Eggs', 600),
+  { ...p(10, 'Eggs – Dozen', 'Eggs', 650),
+    tiers: [{ min_milli: 1000, price_cents: 650 }, { min_milli: 6000, price_cents: 600 }, { min_milli: 10000, price_cents: 550 }] },
   p(11, 'Duck Eggs – Half Dozen', 'Eggs', 700),
   p(20, 'Ground Beef', 'Meat', 999, 'weight'),
   p(21, 'Ribeye Steak', 'Meat', 2499, 'weight'),
@@ -48,7 +49,8 @@ export const demoMembers: Member[] = [
   m(1, 'Sarah', 'Miller', '(608) 555-0101', '2027-04-12', 'active'),
   m(2, 'John', 'Yoder', '(608) 555-0144', '2026-10-15', 'expiring_soon'),
   m(3, 'Emily', 'Hanson', '(608) 555-0177', '2026-08-01', 'expired'),
-  m(4, 'David', 'Schmitt', '(608) 555-0190', '2027-01-30', 'active', false),
+  { ...m(4, 'David', 'Schmitt', '(608) 555-0190', '2027-01-30', 'active', false),
+    warnings: [{ kind: 'no_payment_method', message: 'Payment method' }] },
   m(5, 'Grace', 'Olson', '(608) 555-0122', null, 'none'),
 ];
 

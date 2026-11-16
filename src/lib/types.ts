@@ -12,6 +12,14 @@ export interface Product {
   price_cents: number;
   taxable: boolean;
   sort_order: number;
+  /** Quantity price breaks from FarmMatch, lowest min first. Empty/missing = one price. */
+  tiers?: PriceTier[];
+}
+
+/** From this quantity (in thousandths of the product's unit) up, every unit costs price_cents. */
+export interface PriceTier {
+  min_milli: number;
+  price_cents: number;
 }
 
 export interface Member {
@@ -27,6 +35,18 @@ export interface Member {
   renewal_date: string | null;
   has_card_on_file: boolean;
   membership_status: MembershipStatus;
+  /** Set when FarmMatch can't take this customer's orders (e.g. account/sign-up incomplete). Shown to the cashier. */
+  farmmatch_issue?: string | null;
+  /** Warnings the FarmMatch agent wrote on this customer's profile for the cashier. */
+  warnings?: MemberWarning[];
+}
+
+export type WarningKind = 'no_payment_method' | 'account_incomplete' | 'other';
+
+export interface MemberWarning {
+  kind: WarningKind;
+  message: string;
+  updated_at?: string;
 }
 
 export interface Settings {

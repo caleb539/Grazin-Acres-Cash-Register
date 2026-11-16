@@ -58,6 +58,9 @@ h1, h2 { margin: 0; }
 .tile-name { font-weight: 600; font-size: 16px; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
 .tile-price { font-size: 18px; font-weight: 700; color: var(--primary); font-variant-numeric: tabular-nums; }
 .tile-unit { font-size: 14px; font-weight: 600; color: var(--muted); }
+.tile-tiers { font-size: 12px; font-weight: 700; color: var(--ok); line-height: 1.2; }
+.tier-applied { color: var(--ok); font-weight: 700; }
+.tier-next { color: var(--warn); }
 .tile-weight { border-left: 4px solid var(--accent); }
 .tile-tag { position: absolute; right: 10px; bottom: 12px; font-size: 12px; font-weight: 600; color: var(--warn); }
 
@@ -117,6 +120,9 @@ h1, h2 { margin: 0; }
 .alert-ok { background: var(--ok-bg); color: var(--ok); }
 .alert-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
 .line-fee { background: var(--warn-bg); margin: 6px -8px 0; padding: 10px 8px; border-radius: 10px; border-bottom: 0; }
+.account-warning { border: 2px solid var(--bad); }
+.account-warning-title { font-weight: 800; text-transform: uppercase; letter-spacing: 0.03em; font-size: 13px; margin-bottom: 2px; }
+.picker-warning { color: var(--bad); font-weight: 700; }
 .alert-bad { background: var(--bad-bg); color: var(--bad); }
 .warn-box { display: flex; gap: 12px; align-items: flex-start; background: var(--warn-bg); color: var(--warn); border-radius: 12px; padding: 14px; font-weight: 600; cursor: pointer; }
 .warn-box input { width: 24px; height: 24px; flex: none; margin: 0; }

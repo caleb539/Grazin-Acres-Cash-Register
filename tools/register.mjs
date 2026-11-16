@@ -271,6 +271,11 @@ Agent commands:
   sales-to-post                        Sales to enter (or reverse) in Farmmatch
   mark-posted <sale_id> [farmmatch_order_ref]
   mark-failed <sale_id> <error message>
+  set-warning <member_farmmatch_id> <kind> [message]
+                                       Warn the cashier about a customer's FarmMatch account.
+                                       kind: no_payment_method | account_incomplete | other
+  clear-warning <member_farmmatch_id> [kind]   Remove one warning kind (or all)
+  warnings                             List every warning currently shown at the register
 
 Operator only:
   key set | key status | key delete    Manage the key in Windows Credential Manager
@@ -298,6 +303,14 @@ async function main() {
       if (args.length < 2) fail('Usage: mark-failed <sale_id> <error message>');
       await rpc('mark_sale_failed', { p_sale_id: args[0], p_error: args.slice(1).join(' ') });
       return out({ ok: true, sale_id: args[0] });
+    case 'set-warning':
+      if (args.length < 2) fail('Usage: set-warning <member_farmmatch_id> <no_payment_method|account_incomplete|other> [message]');
+      return out(await rpc('set_member_warning', { p_farmmatch_id: args[0], p_kind: args[1], p_message: args.slice(2).join(' ') || null }));
+    case 'clear-warning':
+      if (args.length < 1) fail('Usage: clear-warning <member_farmmatch_id> [kind]   (no kind = clear all)');
+      return out(await rpc('clear_member_warning', { p_farmmatch_id: args[0], p_kind: args[1] ?? null }));
+    case 'warnings':
+      return out(await selectAll('member_warnings', 'select=kind,message,updated_at,member:members(farmmatch_id,first_name,last_name)&order=updated_at.desc'));
     case 'key': return keyCommand(args[0]);
     case undefined: case 'help': case '--help': case '-h':
       console.log(HELP); return;

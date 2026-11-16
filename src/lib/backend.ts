@@ -2,7 +2,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Catalog } from './local';
 import { milliToNumber } from './money';
-import type { LocalSale, Member, Product, Settings } from './types';
+import type { LocalSale, Member, PriceTier, Product, Settings } from './types';
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const key = (import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY) as string | undefined;
@@ -45,14 +45,27 @@ async function fetchAll<T>(table: string, select: string, filter?: (q: any) => a
 }
 
 export async function downloadCatalog(): Promise<Catalog> {
-  const [products, members, settingsRes] = await Promise.all([
+  const [products, members, settingsRes, tiers] = await Promise.all([
     // register_products = active products minus register_hide_rules (preorders etc.)
     fetchAll<Product>('register_products',
       'id, farmmatch_id, name, category, sale_type, unit, price_cents, taxable, sort_order'),
     fetchAll<Member>('member_lookup', '*'),
     db().from('settings').select('store_name, tax_rate, expiring_soon_days, receipt_footer, jar_credit_cents, membership_fee_cents').single(),
+    fetchAll<{ product_id: string; min_qty: number | string; unit_price_cents: number }>(
+      'product_price_tiers', 'id, product_id, min_qty, unit_price_cents'),
   ]);
   if (settingsRes.error) throw new Error(settingsRes.error.message);
+  // Quantity price breaks (synced from FarmMatch), attached to each product.
+  const byProduct = new Map<string, PriceTier[]>();
+  for (const t of tiers) {
+    const list = byProduct.get(t.product_id) ?? [];
+    list.push({ min_milli: Math.round(Number(t.min_qty) * 1000), price_cents: t.unit_price_cents });
+    byProduct.set(t.product_id, list);
+  }
+  for (const p of products) {
+    const list = byProduct.get(p.id);
+    if (list) p.tiers = list.sort((a, b) => a.min_milli - b.min_milli);
+  }
   const settings = settingsRes.data as Settings;
   settings.tax_rate = Number(settings.tax_rate);
   return { products, members, settings, refreshed_at: new Date().toISOString() };

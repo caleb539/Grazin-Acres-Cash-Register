@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { memberWarnings, WARNING_LABEL, warningDetail } from '../lib/membership';
 import type { Customer, Member, PendingCustomer } from '../lib/types';
 import { MembershipBadge } from './MembershipBadge';
 import { Modal } from './Modal';
@@ -99,6 +100,9 @@ export function CustomerPicker({ members, onPick, onCancel }: Props) {
             <div>
               <div className="customer-name">{m.full_name}</div>
               <div className="muted small">{[m.phone, m.email].filter(Boolean).join(' · ')}</div>
+              {memberWarnings(m).length > 0 && (
+                <div className="small picker-warning">⚠ {memberWarnings(m).map((w) => `${WARNING_LABEL[w.kind]} · ${warningDetail(w)}`).join(' / ')}</div>
+              )}
             </div>
             <MembershipBadge member={m} />
           </button>

@@ -1,5 +1,6 @@
 import { formatCents, formatQty, lineTotalCents } from '../lib/money';
-import { canAddRenewal } from '../lib/membership';
+import { bulkTiers, tierFor, tierLabel } from '../lib/pricing';
+import { canAddRenewal, memberWarnings, WARNING_LABEL, warningDetail } from '../lib/membership';
 import type { CartLine, Customer, MembershipStatus } from '../lib/types';
 import { formatDate, MembershipBadge } from './MembershipBadge';
 
@@ -66,6 +67,12 @@ export function Cart(props: Props) {
             👤 Select customer
           </button>
         )}
+        {member && memberWarnings(member).map((w) => (
+          <div key={w.kind} className="alert alert-bad account-warning" role="alert">
+            <div className="account-warning-title">⚠ {WARNING_LABEL[w.kind]}</div>
+            <div>{warningDetail(w)}</div>
+          </div>
+        ))}
         {status === 'expired' && (
           <div className={`alert ${feeCents > 0 ? 'alert-warn' : 'alert-bad'} alert-row`}>
             <span>
@@ -115,6 +122,7 @@ export function Cart(props: Props) {
                 {l.product.sale_type === 'weight'
                   ? `${formatQty(l.qtyMilli)} ${l.product.unit} × ${formatCents(l.unitPriceCents)}/${l.product.unit}`
                   : `${formatCents(l.unitPriceCents)} each`}
+                <TierNote line={l} />
               </div>
             </div>
             {l.product.sale_type === 'weight' ? (
@@ -171,5 +179,21 @@ export function Cart(props: Props) {
         </div>
       </div>
     </section>
+  );
+}
+
+/** "10+ price" when a quantity break applies, and a nudge toward the next one. */
+function TierNote({ line }: { line: CartLine }) {
+  const { product, qtyMilli, unitPriceCents } = line;
+  const tiers = bulkTiers(product);
+  if (!tiers.length) return null;
+  const applied = unitPriceCents < product.price_cents ? tierFor(product, qtyMilli) : null;
+  const next = tiers.find((t) => t.min_milli > qtyMilli);
+  const unit = product.sale_type === 'weight' ? `/${product.unit}` : ' each';
+  return (
+    <>
+      {applied && <span className="tier-applied"> · {tierLabel(product, applied)} price</span>}
+      {next && <span className="tier-next"> · {tierLabel(product, next)} for {formatCents(next.price_cents)}{unit}</span>}
+    </>
   );
 }

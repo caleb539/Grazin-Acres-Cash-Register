@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canAddRenewal, effectiveStatus, feeAddedByDefault } from './membership';
+import { canAddRenewal, effectiveStatus, feeAddedByDefault, memberWarnings, WARNING_LABEL, warningDetail } from './membership';
 import type { LocalSale, Member } from './types';
 
 const member = (id: string, status: Member['membership_status']): Member => ({
@@ -42,5 +42,39 @@ describe('fee rules', () => {
     expect(canAddRenewal('none')).toBe(true);
     expect(canAddRenewal('active')).toBe(false);
     expect(canAddRenewal('renewed_in_store')).toBe(false);
+  });
+});
+
+describe('memberWarnings', () => {
+  it('returns the warnings list', () => {
+    const m = { ...member('m1', 'active'), warnings: [{ kind: 'no_payment_method' as const, message: 'Add a card' }] };
+    expect(memberWarnings(m)).toEqual([{ kind: 'no_payment_method', message: 'Add a card' }]);
+  });
+  it('falls back to the older single note', () => {
+    expect(memberWarnings({ ...member('m1', 'active'), farmmatch_issue: 'Buyer is not a member' }))
+      .toEqual([{ kind: 'account_incomplete', message: 'Buyer is not a member' }]);
+  });
+  it('shortens old long notes from a saved customer list', () => {
+    const old = 'FarmMatch account incomplete: Buyer has no payment methods. Checkout halts on the ordering-deadline interstitial with red error';
+    expect(memberWarnings({ ...member('m1', 'active'), warnings: [{ kind: 'account_incomplete', message: old }] }))
+      .toEqual([{ kind: 'no_payment_method', message: 'Payment method' }]);
+    const long = memberWarnings({ ...member('m1', 'active'), farmmatch_issue: 'FarmMatch account incomplete: ' + 'x'.repeat(80) })[0].message;
+    expect(long.length).toBeLessThanOrEqual(60);
+    expect(long.endsWith('…')).toBe(true);
+  });
+  it('is empty when there is nothing', () => {
+    expect(memberWarnings({ ...member('m1', 'active'), warnings: [], farmmatch_issue: '  ' })).toEqual([]);
+  });
+});
+
+describe('warning text', () => {
+  it('reads "Account incomplete" with what is missing', () => {
+    const w = { kind: 'no_payment_method' as const, message: 'Payment method' };
+    expect(WARNING_LABEL[w.kind]).toBe('Account incomplete');
+    expect(warningDetail(w)).toBe('Missing: Payment method');
+    expect(warningDetail({ kind: 'account_incomplete', message: 'Signed membership agreement' })).toBe('Missing: Signed membership agreement');
+  });
+  it('shows notes as written', () => {
+    expect(warningDetail({ kind: 'other', message: 'Owes $12' })).toBe('Owes $12');
   });
 });
