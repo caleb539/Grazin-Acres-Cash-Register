@@ -17,6 +17,7 @@ import { effectiveStatus, feeAddedByDefault } from './lib/membership';
 import { packageSizeMilli } from './lib/packageSize';
 import { unitPriceFor } from './lib/pricing';
 import { rankUsuals, type UsualRow } from './lib/usuals';
+import { isIOS, preloadReceiptLogo, receiptPngFile } from './lib/receiptImage';
 
 /** Change a line's quantity; its price follows FarmMatch's quantity tiers. */
 const withQty = (l: CartLine, qtyMilli: number): CartLine => ({ ...l, qtyMilli, unitPriceCents: unitPriceFor(l.product, qtyMilli) });
@@ -86,18 +87,32 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
   const [printSale, setPrintSale] = useState<LocalSale | null>(null);
 
   // Load the receipt logo up front so it is ready the moment Print is tapped.
-  useEffect(() => { new Image().src = '/logo.png'; }, []);
+  useEffect(() => { new Image().src = '/logo.png'; preloadReceiptLogo(); }, []);
 
-  // iPad Safari only opens the print sheet when print() runs inside the tap itself,
-  // so render the receipt synchronously and print straight away (no timer).
+  const settingsForPrint = catalog?.settings;
   const handlePrint = useCallback((sale: LocalSale) => {
+    // On the iPad the home-screen app ignores window.print(), so hand the receipt to the
+    // share sheet instead, which has Print (AirPrint). Built synchronously to stay inside the tap.
+    if (isIOS() && settingsForPrint && typeof navigator.share === 'function') {
+      try {
+        const file = receiptPngFile(sale, settingsForPrint);
+        if (!navigator.canShare || navigator.canShare({ files: [file] })) {
+          navigator.share({ files: [file], title: `Receipt ${sale.receipt_number}` }).catch((e: unknown) => {
+            if ((e as Error)?.name !== 'AbortError') alert(`Couldn't open the share sheet: ${(e as Error)?.message ?? e}`);
+          });
+          return;
+        }
+      } catch (e) {
+        console.error('receipt image failed', e);
+      }
+    }
     flushSync(() => setPrintSale(sale));
     try {
       window.print();
     } catch {
-      alert('Printing is not available here. Open the register in Safari (not the home-screen app) and try again.');
+      alert('Printing is not available here. Open the register in Safari and try again.');
     }
-  }, []);
+  }, [settingsForPrint]);
 
   const settings = catalog?.settings;
   const totals = useMemo(() => {
