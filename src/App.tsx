@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { Cart } from './components/Cart';
 import { CustomerPicker } from './components/CustomerPicker';
 import { Login } from './components/Login';
@@ -84,9 +85,18 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
   const [overlay, setOverlay] = useState<Overlay>(() => (getCashier() ? null : { kind: 'cashier' }));
   const [printSale, setPrintSale] = useState<LocalSale | null>(null);
 
+  // Load the receipt logo up front so it is ready the moment Print is tapped.
+  useEffect(() => { new Image().src = '/logo.png'; }, []);
+
+  // iPad Safari only opens the print sheet when print() runs inside the tap itself,
+  // so render the receipt synchronously and print straight away (no timer).
   const handlePrint = useCallback((sale: LocalSale) => {
-    setPrintSale(sale);
-    setTimeout(() => window.print(), 50);
+    flushSync(() => setPrintSale(sale));
+    try {
+      window.print();
+    } catch {
+      alert('Printing is not available here. Open the register in Safari (not the home-screen app) and try again.');
+    }
   }, []);
 
   const settings = catalog?.settings;
