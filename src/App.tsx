@@ -86,34 +86,42 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
   const [overlay, setOverlay] = useState<Overlay>(() => (getCashier() ? null : { kind: 'cashier' }));
   const [printSale, setPrintSale] = useState<LocalSale | null>(null);
 
-  // Load the receipt logo up front so it is ready the moment Print is tapped.
-  useEffect(() => { new Image().src = '/logo.png'; preloadReceiptLogo(); }, []);
+  // The share-sheet fallback draws the logo, so have it loaded before anyone taps.
+  useEffect(() => { preloadReceiptLogo(); }, []);
+
+  // Backup for the iPad home-screen app: if its print screen doesn't open, the cashier can
+  // send a picture of the receipt to the share sheet, which has Print.
+  const [shareFallback, setShareFallback] = useState<LocalSale | null>(null);
+  useEffect(() => {
+    if (!shareFallback) return;
+    const t = setTimeout(() => setShareFallback(null), 10000);
+    return () => clearTimeout(t);
+  }, [shareFallback]);
 
   const settingsForPrint = catalog?.settings;
-  const handlePrint = useCallback((sale: LocalSale) => {
-    // In Safari, window.print() opens the print screen directly and sends text, which prints fast.
-    // An iPad home-screen app ignores window.print(), so there hand a picture of the receipt to the
-    // share sheet instead, which has Print (slower). Built synchronously to stay inside the tap.
-    if (isIOS() && isStandaloneApp() && settingsForPrint && typeof navigator.share === 'function') {
-      try {
-        const file = receiptPngFile(sale, settingsForPrint);
-        if (!navigator.canShare || navigator.canShare({ files: [file] })) {
-          navigator.share({ files: [file], title: `Receipt ${sale.receipt_number}` }).catch((e: unknown) => {
-            if ((e as Error)?.name !== 'AbortError') alert(`Couldn't open the share sheet: ${(e as Error)?.message ?? e}`);
-          });
-          return;
-        }
-      } catch (e) {
-        console.error('receipt image failed', e);
-      }
+  const shareReceipt = useCallback((sale: LocalSale) => {
+    setShareFallback(null);
+    if (!settingsForPrint || typeof navigator.share !== 'function') return;
+    try {
+      const file = receiptPngFile(sale, settingsForPrint);
+      navigator.share({ files: [file], title: `Receipt ${sale.receipt_number}` }).catch((e: unknown) => {
+        if ((e as Error)?.name !== 'AbortError') alert(`Couldn't open the share sheet: ${(e as Error)?.message ?? e}`);
+      });
+    } catch (e) {
+      console.error('receipt image failed', e);
     }
+  }, [settingsForPrint]);
+
+  // Render the text receipt and print inside the tap (iPad Safari ignores a print() that runs later).
+  const handlePrint = useCallback((sale: LocalSale) => {
     flushSync(() => setPrintSale(sale));
     try {
       window.print();
     } catch {
-      alert('Printing is not available here. Open the register in Safari and try again.');
+      /* fall through to the share option below */
     }
-  }, [settingsForPrint]);
+    if (isIOS() && isStandaloneApp() && typeof navigator.share === 'function') setShareFallback(sale);
+  }, []);
 
   const settings = catalog?.settings;
   const totals = useMemo(() => {
@@ -221,6 +229,13 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
   return (
     <div className="app">
       {printSale && <Receipt sale={printSale} settings={catalog.settings} />}
+      {shareFallback && (
+        <div className="print-toast" role="status">
+          <span className="grow">Print screen didn't open?</span>
+          <button type="button" className="btn btn-primary" onClick={() => shareReceipt(shareFallback)}>Print with Share</button>
+          <button type="button" className="btn btn-ghost" onClick={() => setShareFallback(null)} aria-label="Dismiss">✕</button>
+        </div>
+      )}
       <header className="topbar">
         <div className="brand">
           <img className="brand-logo" src="/logo-small.png" alt="" height={44} />
