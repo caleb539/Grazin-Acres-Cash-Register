@@ -14,7 +14,9 @@ export default defineConfig({
         description: "In-store checkout for Grazin' Acres",
         theme_color: '#2f4a2b',
         background_color: '#f6f3ea',
-        display: 'standalone',
+        // 'browser': the home-screen icon opens the register in Safari, where Print receipt
+        // goes straight to the print screen. As a stand-alone app the iPad can't print directly.
+        display: 'browser',
         orientation: 'any',
         start_url: '/',
         icons: [

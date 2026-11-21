@@ -168,3 +168,9 @@ export function isIOS(): boolean {
   const ua = navigator.userAgent;
   return /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
 }
+
+/** Running as a home-screen web app (not a Safari tab), where window.print() does nothing on iOS. */
+export function isStandaloneApp(): boolean {
+  return (navigator as Navigator & { standalone?: boolean }).standalone === true
+    || window.matchMedia?.('(display-mode: standalone)').matches === true;
+}

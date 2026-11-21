@@ -17,7 +17,7 @@ import { effectiveStatus, feeAddedByDefault } from './lib/membership';
 import { packageSizeMilli } from './lib/packageSize';
 import { unitPriceFor } from './lib/pricing';
 import { rankUsuals, type UsualRow } from './lib/usuals';
-import { isIOS, preloadReceiptLogo, receiptPngFile } from './lib/receiptImage';
+import { isIOS, isStandaloneApp, preloadReceiptLogo, receiptPngFile } from './lib/receiptImage';
 
 /** Change a line's quantity; its price follows FarmMatch's quantity tiers. */
 const withQty = (l: CartLine, qtyMilli: number): CartLine => ({ ...l, qtyMilli, unitPriceCents: unitPriceFor(l.product, qtyMilli) });
@@ -91,9 +91,10 @@ function Register({ demo, onExit }: { demo: boolean; onExit: () => void }) {
 
   const settingsForPrint = catalog?.settings;
   const handlePrint = useCallback((sale: LocalSale) => {
-    // On the iPad the home-screen app ignores window.print(), so hand the receipt to the
-    // share sheet instead, which has Print (AirPrint). Built synchronously to stay inside the tap.
-    if (isIOS() && settingsForPrint && typeof navigator.share === 'function') {
+    // In Safari, window.print() opens the print screen directly and sends text, which prints fast.
+    // An iPad home-screen app ignores window.print(), so there hand a picture of the receipt to the
+    // share sheet instead, which has Print (slower). Built synchronously to stay inside the tap.
+    if (isIOS() && isStandaloneApp() && settingsForPrint && typeof navigator.share === 'function') {
       try {
         const file = receiptPngFile(sale, settingsForPrint);
         if (!navigator.canShare || navigator.canShare({ files: [file] })) {
